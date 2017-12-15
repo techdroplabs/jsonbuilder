@@ -43,5 +43,12 @@ func TestCustomMarshallingUsed(t *testing.T) {
 	}
 	jh = jsonbuilder.FromMarshaller(foo, m)
 	b = jh.Marshal()
-	assert.Equal(t, "test", string(b), `"We should get "test"`)
+	assert.Equal(t, "test", b, `"We should get "test"`)
+}
+
+func TestMarshallBytes(t *testing.T) {
+	foo := Foo{"anyone", 42, "mars"}
+	jh := jsonbuilder.From(foo)
+	b := jh.MarshalBytes()
+	assert.NoError(t, json.Unmarshal(b, &foo))
 }

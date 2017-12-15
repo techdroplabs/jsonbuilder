@@ -264,3 +264,13 @@ func (jo *JsonHelper) Marshal() string {
 		return string(buf)
 	}
 }
+
+func (jo *JsonHelper) MarshalBytes() []byte {
+	if jo.ObjectsArray == nil {
+		buf, _ := jo.marshal(jo.Objects)
+		return buf
+	} else {
+		buf, _ := jo.marshal(jo.ObjectsArray)
+		return buf
+	}
+}
