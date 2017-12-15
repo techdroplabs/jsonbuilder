@@ -23,12 +23,16 @@ func Object() *JsonHelper {
 }
 
 func From(s interface{}) *JsonHelper {
+	buf, _ := json.Marshal(s)
+
+	return FromEncoding(s, buf)
+}
+
+// FromEncoding allows more control over how the initial JSON encoding of the struct is done.
+func FromEncoding(s interface{}, buf []byte) *JsonHelper {
 	j := &JsonHelper{}
 	j.parents = make([]*JsonHelper, 0)
-
-	buf, _ := json.Marshal(s)
 	k := reflect.ValueOf(s).Kind()
-
 	if k == reflect.Array {
 		json.Unmarshal(buf, &j.ObjectsArray)
 		j.Objects = nil
