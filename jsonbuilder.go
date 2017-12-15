@@ -6,7 +6,11 @@ import (
 	"reflect"
 )
 
+// Marshaller abstracts the process of marshalling a struct to JSON (encoded as a byte array)
+type Marshaller func(interface{}) ([]byte, error)
+
 type JsonHelper struct {
+	marshal Marshaller
 	parents []*JsonHelper
 	self    interface{}
 
@@ -23,15 +27,15 @@ func Object() *JsonHelper {
 }
 
 func From(s interface{}) *JsonHelper {
-	buf, _ := json.Marshal(s)
-
-	return FromEncoding(s, buf)
+	return FromMarshaller(s, json.Marshal)
 }
 
-// FromEncoding allows more control over how the initial JSON encoding of the struct is done.
-func FromEncoding(s interface{}, buf []byte) *JsonHelper {
+// FromMarshaller allows more control over how the initial JSON encoding of the struct is done.
+func FromMarshaller(s interface{}, m Marshaller) *JsonHelper {
 	j := &JsonHelper{}
+	j.marshal = m
 	j.parents = make([]*JsonHelper, 0)
+	buf, _ := j.marshal(s)
 	k := reflect.ValueOf(s).Kind()
 	if k == reflect.Array {
 		json.Unmarshal(buf, &j.ObjectsArray)
@@ -186,7 +190,7 @@ func (jo *JsonHelper) Leave() *JsonHelper {
 	lp := jo.parents[len(jo.parents)-1]
 	np := jo.parents[:len(jo.parents)-1]
 
-	return &JsonHelper{np, lp.self, lp.Objects, lp.ObjectsArray}
+	return &JsonHelper{jo.marshal, np, lp.self, lp.Objects, lp.ObjectsArray}
 }
 
 func (jo *JsonHelper) Begin(n interface{}) *JsonHelper {
@@ -203,6 +207,7 @@ func (jo *JsonHelper) Enter(n interface{}) *JsonHelper {
 		switch jo.Objects[name].(type) {
 		case map[string]interface{}:
 			return &JsonHelper{
+				jo.marshal,
 				append(jo.parents, jo),
 				n,
 				jo.Objects[name].(map[string]interface{}),
@@ -210,6 +215,7 @@ func (jo *JsonHelper) Enter(n interface{}) *JsonHelper {
 			}
 		case []interface{}:
 			return &JsonHelper{
+				jo.marshal,
 				append(jo.parents, jo),
 				n,
 				nil,
@@ -221,6 +227,7 @@ func (jo *JsonHelper) Enter(n interface{}) *JsonHelper {
 		switch jo.ObjectsArray[index].(type) {
 		case map[string]interface{}:
 			return &JsonHelper{
+				jo.marshal,
 				append(jo.parents, jo),
 				n,
 				jo.ObjectsArray[index].(map[string]interface{}),
@@ -228,6 +235,7 @@ func (jo *JsonHelper) Enter(n interface{}) *JsonHelper {
 			}
 		case []interface{}:
 			return &JsonHelper{
+				jo.marshal,
 				append(jo.parents, jo),
 				n,
 				nil,
@@ -249,20 +257,10 @@ func (jo *JsonHelper) Dive(name ...string) *JsonHelper {
 
 func (jo *JsonHelper) Marshal() string {
 	if jo.ObjectsArray == nil {
-		buf, _ := json.Marshal(jo.Objects)
+		buf, _ := jo.marshal(jo.Objects)
 		return string(buf)
 	} else {
-		buf, _ := json.Marshal(jo.ObjectsArray)
-		return string(buf)
-	}
-}
-
-func (jo *JsonHelper) MarshalPretty() string {
-	if jo.ObjectsArray == nil {
-		buf, _ := json.MarshalIndent(jo.Objects, "", "    ")
-		return string(buf)
-	} else {
-		buf, _ := json.MarshalIndent(jo.ObjectsArray, "", "    ")
+		buf, _ := jo.marshal(jo.ObjectsArray)
 		return string(buf)
 	}
 }
