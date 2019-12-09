@@ -37,7 +37,7 @@ func FromMarshaller(s interface{}, m Marshaller) *JsonHelper {
 	j.parents = make([]*JsonHelper, 0)
 	buf, _ := j.marshal(s)
 	k := reflect.ValueOf(s).Kind()
-	if k == reflect.Array {
+	if k == reflect.Array || k == reflect.Slice {
 		json.Unmarshal(buf, &j.ObjectsArray)
 		j.Objects = nil
 	} else if k == reflect.Struct {
